@@ -236,7 +236,7 @@ function App() {
       <div className="container">
         <div className="header">
           <div>
-            <h1>Tag Notes</h1>
+            <h1>SnipNotes</h1>
             <p className="subtitle">Automatically tag web links and text ideas to find them later</p>
           </div>
           <div className="user-info">
