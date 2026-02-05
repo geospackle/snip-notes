@@ -113,6 +113,40 @@ def test_search_by_tag_success(client, authenticated_user, sample_resources):
     assert any("technology" in resource["tags"] for resource in data)
 
 
+@pytest.mark.parametrize("search_term,stored_tag", [
+    ("enjoy", "enjoyable"),
+    ("sick", "sickness"),
+    ("tag", "tagged"),
+    ("run", "running"),
+    ("happy", "happiness"),
+])
+def test_search_by_tag_with_stemming(client, authenticated_user, mock_analyzers, search_term, stored_tag):
+    """Test that search matches tags with different suffixes using stemming"""
+    # Add resource with the stored tag
+    response = client.post(
+        "/api/add",
+        json={
+            "content": f"Test content about {stored_tag}",
+            "tags": [stored_tag, "other"],
+            "description": "Test description"
+        },
+        headers=authenticated_user["headers"],
+    )
+    assert response.status_code == 200
+
+    # Search with the base form should match the suffix form
+    search_response = client.post(
+        "/api/search",
+        json={"tag": search_term},
+        headers=authenticated_user["headers"],
+    )
+
+    assert search_response.status_code == 200
+    data = search_response.json()
+    assert len(data) == 1
+    assert stored_tag in data[0]["tags"]
+
+
 def test_search_by_tag_no_results(client, authenticated_user, sample_resources):
     """Test searching for a tag that doesn't exist"""
     response = client.post(
