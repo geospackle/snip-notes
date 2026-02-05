@@ -11,6 +11,7 @@ class TaggedResource:
     resource_type: str  # 'web' or 'text'
     tags: List[str]
     description: str
+    user_email: str  # Owner of this resource
 
 
 class ResourceRepository(ABC):
@@ -22,16 +23,16 @@ class ResourceRepository(ABC):
         pass
 
     @abstractmethod
-    def find_by_tag(self, tag: str) -> List[TaggedResource]:
-        """Find all resources that have the specified tag"""
+    def find_by_tag(self, tag: str, user_email: str) -> List[TaggedResource]:
+        """Find all resources that have the specified tag for a specific user"""
         pass
 
     @abstractmethod
-    def get_all(self) -> List[TaggedResource]:
-        """Get all resources"""
+    def get_all(self, user_email: str) -> List[TaggedResource]:
+        """Get all resources for a specific user"""
         pass
 
     @abstractmethod
-    def get_by_id(self, resource_id: str) -> Optional[TaggedResource]:
-        """Get a resource by ID"""
+    def get_by_id(self, resource_id: str, user_email: str) -> Optional[TaggedResource]:
+        """Get a resource by ID for a specific user"""
         pass

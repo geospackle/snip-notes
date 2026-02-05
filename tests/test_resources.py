@@ -268,6 +268,121 @@ def test_get_all_resources_structure(client, authenticated_user, sample_resource
         assert isinstance(resource["tags"], list)
 
 
+# User isolation tests
+def test_user_cannot_see_other_users_resources(client, mock_analyzers):
+    """Test that users can only see their own resources"""
+    # Create user 1
+    user1_signup = client.post(
+        "/api/auth/signup",
+        json={"email": "user1@example.com", "password": "password123"}
+    )
+    user1_token = user1_signup.json()["access_token"]
+    user1_headers = {"Authorization": f"Bearer {user1_token}"}
+
+    # Create user 2
+    user2_signup = client.post(
+        "/api/auth/signup",
+        json={"email": "user2@example.com", "password": "password123"}
+    )
+    user2_token = user2_signup.json()["access_token"]
+    user2_headers = {"Authorization": f"Bearer {user2_token}"}
+
+    # User 1 adds a resource
+    client.post(
+        "/api/add",
+        json={
+            "content": "User 1's private note",
+            "tags": ["private", "user1"],
+            "description": "This belongs to user 1"
+        },
+        headers=user1_headers
+    )
+
+    # User 2 adds a resource
+    client.post(
+        "/api/add",
+        json={
+            "content": "User 2's private note",
+            "tags": ["private", "user2"],
+            "description": "This belongs to user 2"
+        },
+        headers=user2_headers
+    )
+
+    # User 1 gets all resources - should only see their own
+    user1_resources = client.get("/api/resources", headers=user1_headers)
+    assert user1_resources.status_code == 200
+    user1_data = user1_resources.json()
+    assert len(user1_data) == 1
+    assert "user 1" in user1_data[0]["content"].lower()
+
+    # User 2 gets all resources - should only see their own
+    user2_resources = client.get("/api/resources", headers=user2_headers)
+    assert user2_resources.status_code == 200
+    user2_data = user2_resources.json()
+    assert len(user2_data) == 1
+    assert "user 2" in user2_data[0]["content"].lower()
+
+
+def test_user_cannot_search_other_users_tags(client, mock_analyzers):
+    """Test that tag search is scoped to the authenticated user"""
+    # Create two users
+    user1_signup = client.post(
+        "/api/auth/signup",
+        json={"email": "user1@example.com", "password": "password123"}
+    )
+    user1_headers = {"Authorization": f"Bearer {user1_signup.json()['access_token']}"}
+
+    user2_signup = client.post(
+        "/api/auth/signup",
+        json={"email": "user2@example.com", "password": "password123"}
+    )
+    user2_headers = {"Authorization": f"Bearer {user2_signup.json()['access_token']}"}
+
+    # Both users add resources with the same tag
+    client.post(
+        "/api/add",
+        json={
+            "content": "User 1 content",
+            "tags": ["shared-tag"],
+            "description": "User 1 description"
+        },
+        headers=user1_headers
+    )
+
+    client.post(
+        "/api/add",
+        json={
+            "content": "User 2 content",
+            "tags": ["shared-tag"],
+            "description": "User 2 description"
+        },
+        headers=user2_headers
+    )
+
+    # User 1 searches for "shared-tag" - should only see their own
+    user1_search = client.post(
+        "/api/search",
+        json={"tag": "shared-tag"},
+        headers=user1_headers
+    )
+    assert user1_search.status_code == 200
+    user1_results = user1_search.json()
+    assert len(user1_results) == 1
+    assert "User 1" in user1_results[0]["content"]
+
+    # User 2 searches for "shared-tag" - should only see their own
+    user2_search = client.post(
+        "/api/search",
+        json={"tag": "shared-tag"},
+        headers=user2_headers
+    )
+    assert user2_search.status_code == 200
+    user2_results = user2_search.json()
+    assert len(user2_results) == 1
+    assert "User 2" in user2_results[0]["content"]
+
+
 # Health check tests
 def test_health_check(client):
     """Test health check endpoint"""

@@ -172,6 +172,7 @@ async def add_resource(
             resource_type=resource_type,
             tags=tags,
             description=description,
+            user_email=current_user,
         )
 
         repository.save(resource)
@@ -200,7 +201,7 @@ async def search_by_tag(
     if not tag:
         raise HTTPException(status_code=400, detail="Tag cannot be empty")
 
-    resources = repository.find_by_tag(tag)
+    resources = repository.find_by_tag(tag, current_user)
 
     return [
         ResourceResponse(
@@ -216,8 +217,8 @@ async def search_by_tag(
 
 @app.get("/api/resources", response_model=List[ResourceResponse])
 async def get_all_resources(current_user: str = Depends(verify_token)):
-    """Get all resources"""
-    resources = repository.get_all()
+    """Get all resources for the authenticated user"""
+    resources = repository.get_all(current_user)
 
     return [
         ResourceResponse(
